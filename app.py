@@ -243,82 +243,96 @@ if uploaded_file:
         df['PredictedDropout'] = y_pred
 
         # Map prediction to labels
-        df['Status'] = df['PredictedDropout'].apply(lambda x: 'Dropout' if x == 1 else 'Graduate')
+        df['Status'] = df['PredictedDropout'].apply(lambda x: 'Graduate' if x == 1 else 'Dropout')
+
+        # Filter by status
+        selected = st.selectbox('Filter Status', ['Dropout', 'Graduate'])
+        df_filtered = df[df['Status'] == selected]
 
         # Metrics: dropout count, dropout rate, total students
         total = len(df)
         dropouts = int((df['Status'] == 'Dropout').sum())
         rate = (dropouts / total) * 100 if total > 0 else 0
         c1, c2, c3 = st.columns(3)
-        c1.metric("Dropout Count", dropouts)
-        c2.metric("Dropout Rate", f"{rate:.2f}%")
-        c3.metric("Total Students", total)
-
-        # Filter by status
-        selected = st.selectbox("Filter Status", ["Dropout", "Graduate"])
-        df_filtered = df[df['Status'] == selected]
+        c1.metric('Dropout Count', dropouts)
+        c2.metric('Dropout Rate', f'{rate:.2f}%')
+        c3.metric('Total Students', total)
 
         # Mapping dictionaries
         prev_map = {
-            1: "Secondary education",
-            2: "Higher education - bachelor's degree",
-            3: "Higher education - degree",
-            4: "Higher education - master's",
-            5: "Higher education - doctorate",
-            6: "Frequency of higher education",
-            9: "12th year of schooling - not completed",
-            10: "11th year of schooling - not completed",
-            12: "Other - 11th year of schooling",
-            14: "10th year of schooling",
-            15: "10th year of schooling - not completed",
-            19: "Basic education 3rd cycle (9th/10th/11th)",
-            38: "Basic education 2nd cycle (6th/7th/8th)",
-            39: "Technological specialization course",
-            40: "Higher education - degree (1st cycle)",
-            42: "Professional higher technical course",
-            43: "Higher education - master (2nd cycle)"
+            1: 'Secondary education',
+            2: 'Higher education - bachelor\'s degree',
+            3: 'Higher education - degree',
+            4: 'Higher education - master\'s',
+            5: 'Higher education - doctorate',
+            6: 'Frequency of higher education',
+            9: '12th year of schooling - not completed',
+            10: '11th year of schooling - not completed',
+            12: 'Other - 11th year of schooling',
+            14: '10th year of schooling',
+            15: '10th year of schooling - not completed',
+            19: 'Basic education 3rd cycle (9th/10th/11th)',
+            38: 'Basic education 2nd cycle (6th/7th/8th)',
+            39: 'Technological specialization course',
+            40: 'Higher education - degree (1st cycle)',
+            42: 'Professional higher technical course',
+            43: 'Higher education - master (2nd cycle)'
         }
         nat_map = {
-            1: "Portuguese", 2: "German", 6: "Spanish", 11: "Italian",
-            13: "Dutch", 14: "English", 17: "Lithuanian", 21: "Angolan", 22: "Cape Verdean",
-            24: "Guinean", 25: "Mozambican", 26: "Santomean", 32: "Turkish",
-            41: "Brazilian", 62: "Romanian", 100: "Moldova (Republic of)",
-            101: "Mexican", 103: "Ukrainian", 105: "Russian", 108: "Cuban", 109: "Colombian"
+            1: 'Portuguese', 2: 'German', 6: 'Spanish', 11: 'Italian',
+            13: 'Dutch', 14: 'English', 17: 'Lithuanian', 21: 'Angolan', 22: 'Cape Verdean',
+            24: 'Guinean', 25: 'Mozambican', 26: 'Santomean', 32: 'Turkish',
+            41: 'Brazilian', 62: 'Romanian', 100: 'Moldova (Republic of)',
+            101: 'Mexican', 103: 'Ukrainian', 105: 'Russian', 108: 'Cuban', 109: 'Colombian'
         }
 
-        # Pie chart: Previous Qualification
-        df_filtered['PrevLabel'] = df_filtered['Previous_qualification'].map(prev_map)
-        fig1, ax1 = plt.subplots()
-        counts1 = df_filtered['PrevLabel'].value_counts()
-        ax1.pie(counts1, labels=counts1.index, autopct='%1.1f%%')
-        ax1.set_title("Previous Qualification Distribution")
-        st.pyplot(fig1)
+        # Charts side by side
+        col1, col2, col3 = st.columns(3)
+
+        # Pie chart: Previous Qualification with "Others"
+        with col1:
+            df_filtered['PrevLabel'] = df_filtered['Previous_qualification'].map(prev_map)
+            counts = df_filtered['PrevLabel'].value_counts()
+            top3 = counts.nlargest(3)
+            others = counts.sum() - top3.sum()
+            display_counts = top3.append(pd.Series({'Others': others}))
+            fig1, ax1 = plt.subplots()
+            ax1.pie(display_counts, labels=None, autopct='%1.1f%%')
+            ax1.set_title('Previous Qualification')
+            ax1.legend(display_counts.index, loc='best')
+            st.pyplot(fig1)
 
         # Histogram: Age at Enrollment by Gender
-        fig2, ax2 = plt.subplots()
-        male_ages = df_filtered[df_filtered['Gender'] == 1]['Age_at_enrollment']
-        female_ages = df_filtered[df_filtered['Gender'] == 0]['Age_at_enrollment']
-        ax2.hist([male_ages, female_ages], bins=8, label=['Male', 'Female'])
-        ax2.set_xlabel('Age at Enrollment')
-        ax2.set_ylabel('Count')
-        ax2.legend()
-        ax2.set_title("Age at Enrollment by Gender")
-        st.pyplot(fig2)
+        with col2:
+            male_ages = df_filtered[df_filtered['Gender'] == 1]['Age_at_enrollment']
+            female_ages = df_filtered[df_filtered['Gender'] == 0]['Age_at_enrollment']
+            fig2, ax2 = plt.subplots()
+            ax2.hist([male_ages, female_ages], bins=8, label=['Male', 'Female'])
+            ax2.set_xlabel('Age at Enrollment')
+            ax2.set_ylabel('Count')
+            ax2.legend()
+            ax2.set_title('Age at Enrollment by Gender')
+            st.pyplot(fig2)
 
-        # Pie chart: Nationality
-        df_filtered['NatLabel'] = df_filtered['Nacionality'].map(nat_map)
-        fig3, ax3 = plt.subplots()
-        counts3 = df_filtered['NatLabel'].value_counts()
-        ax3.pie(counts3, labels=counts3.index, autopct='%1.1f%%')
-        ax3.set_title("Nationality Distribution")
-        st.pyplot(fig3)
+        # Pie chart: Nationality with "Others"
+        with col3:
+            df_filtered['NatLabel'] = df_filtered['Nacionality'].map(nat_map)
+            counts_n = df_filtered['NatLabel'].value_counts()
+            top3_n = counts_n.nlargest(3)
+            others_n = counts_n.sum() - top3_n.sum()
+            display_counts_n = top3_n.append(pd.Series({'Others': others_n}))
+            fig3, ax3 = plt.subplots()
+            ax3.pie(display_counts_n, labels=None, autopct='%1.1f%%')
+            ax3.set_title('Nationality')
+            ax3.legend(display_counts_n.index, loc='best')
+            st.pyplot(fig3)
 
         # Display filtered data and download
         st.dataframe(df_filtered)
         csv = df_filtered.to_csv(index=False).encode('utf-8')
         st.download_button(
-            label="Download Prediction Result",
+            label='Download Prediction Result',
             data=csv,
-            file_name="predicted_dropout.csv",
+            file_name='predicted_dropout.csv',
             mime='text/csv'
         )
